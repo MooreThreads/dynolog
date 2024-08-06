@@ -37,7 +37,8 @@ class LibkinetoConfigManager {
   std::string obtainOnDemandConfig(
       const std::string& jobId,
       const std::vector<int32_t>& pids,
-      int32_t configType);
+      int32_t configType,
+      int currentRunloopState);
 
   GpuProfilerResult setOnDemandConfig(
       const std::string& jobId,
@@ -45,6 +46,13 @@ class LibkinetoConfigManager {
       const std::string& config,
       int32_t configType,
       int32_t limit);
+
+  int getOnDemandProfilingState(
+      const std::string& jobId,
+      const std::set<int32_t>& pids);
+
+  std::set<int32_t> getOnDemandProfilingChildPids(
+    const std::string& jobId);
 
   // Return the number of active libkineto processes
   // with the given Chronos / Tangram Job Id
@@ -54,6 +62,7 @@ class LibkinetoConfigManager {
   struct LibkinetoProcess {
     int32_t pid;
     std::chrono::system_clock::time_point lastRequestTime;
+    int currentRunloopState;
     std::string eventProfilerConfig;
     std::string activityProfilerConfig;
   };
@@ -70,6 +79,8 @@ class LibkinetoConfigManager {
   // Map of pid ancestry -> LibkinetoProcess
   using ProcessMap = std::map<std::set<int32_t>, LibkinetoProcess>;
   std::map<std::string, ProcessMap> jobs_;
+  // Map of jobId -> child pids set
+  std::map<std::string, std::set<int32_t>> jobs_child_;
 
   // Map of gpu id -> pids
   using InstancesPerGpuMap = std::map<int32_t, std::set<int32_t>>;

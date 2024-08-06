@@ -103,6 +103,38 @@ std::string SimpleJsonServer<TServiceHandler>::processOneImpl(
             fmt::format("failed with exception = {}", ex.what());
       }
     }
+  } else if (request["fn"] == "getKinetOnDemandProfilingStateRequest") {
+    if (!request.contains("pids")) {
+      response["status"] = "failed";
+    } else {
+      try {
+        std::vector<int> pids = request.at("pids").get<std::vector<int>>();
+        std::set<int> pids_set{
+            pids.begin(), pids.end()}; // TODO directly convert?
+
+        int job_id = request.value("job_id", 0);
+        auto result = handler_->getKinetOnDemandProfilingStateRequest(
+            job_id, pids_set);
+        response["currProfilingState"] = result;
+      } catch (const std::exception& ex) {
+        LOG(ERROR) << "getKinetOnDemandProfilingStateRequest: parsing exception = "
+                   << ex.what();
+        response["status"] =
+            fmt::format("failed with exception = {}", ex.what());
+      }
+    }
+  } else if (request["fn"] == "getKinetOnDemandProfilingChildPidsRequest") {
+    try {
+      int job_id = request.value("job_id", 0);
+      auto result = handler_->getKinetOnDemandProfilingChildPidsRequest(
+          job_id);
+      response["childPids"] = result;
+    } catch (const std::exception& ex) {
+      LOG(ERROR) << "getKinetOnDemandProfilingChildPidsRequest: parsing exception = "
+                  << ex.what();
+      response["status"] =
+          fmt::format("failed with exception = {}", ex.what());
+    }
   } else if (request["fn"] == "dcgmProfPause") {
     if (!request.contains("duration_s")) {
       response["status"] = "failed";

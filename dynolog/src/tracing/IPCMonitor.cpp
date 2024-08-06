@@ -71,7 +71,7 @@ void IPCMonitor::getLibkinetoOnDemandRequest(
   std::vector<int32_t> pids(req->pids, req->pids + req->n);
   try {
     ret_config = LibkinetoConfigManager::getInstance()->obtainOnDemandConfig(
-        std::to_string(req->jobid), pids, req->type);
+        std::to_string(req->jobid), pids, req->type, req->currentRunloopState);
     VLOG(0) << "getLibkinetoOnDemandRequest() : job id " << req->jobid
             << " pids = " << pids[0];
   } catch (const std::runtime_error& ex) {

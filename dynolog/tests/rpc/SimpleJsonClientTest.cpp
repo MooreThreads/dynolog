@@ -43,6 +43,22 @@ struct MockServiceHandler {
     return result;
   }
 
+  int getKinetOnDemandProfilingStateRequest(
+      int job_id,
+      const std::set<int>& pids) {
+    job_id_ = job_id;
+    pids_ = pids;
+    getKinetOnDemandProfilingStateCalls_++;
+
+    return -1;
+  }
+
+  std::set<int32_t> getKinetOnDemandProfilingChildPidsRequest(int job_id) {
+    job_id_ = job_id;
+    getKinetOnDemandProfilingChildPidsCall_++;
+    return pids_;
+  }
+
   bool dcgmProfPause(int duration_s) {
     duration_s_ = duration_s;
     dcgm_prof_enabled_ = false;
@@ -63,6 +79,8 @@ struct MockServiceHandler {
   GpuProfilerResult result;
 
   int setKinetoOnDemandCalls_ = 0;
+  int getKinetOnDemandProfilingStateCalls_ = 0;
+  int getKinetOnDemandProfilingChildPidsCall_ = 0;
   int job_id_ = -1;
   std::set<int> pids_;
   std::string config_;

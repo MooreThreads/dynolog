@@ -73,6 +73,31 @@ enum Command {
         /// Max number of processes to profile
         #[clap(long, default_value_t = 3)]
         process_limit: u32,
+        /// List of activities to capture trace for (comma separated).
+        /// if not set, default: cpu_op,user_annotation,gpu_user_annotation,gpu_memcpy,gpu_memset,kernel,external_correlation,musa_runtime,musa_driver,cpu_instant_event,python_function,overhead
+        #[clap(long, default_value = "")]
+        activities: String,
+        /// Verbose log level.
+        #[clap(long, default_value_t = -1)]
+        verbose_log_level: i64,
+        /// Activities warmup period secs.
+        #[clap(long, default_value_t = 0)]
+        activities_warmup_period_secs: u64,
+    },
+    /// Capture gputrace state
+    GputraceState {
+        /// Job id of the application to trace
+        #[clap(long, default_value_t = 0)]
+        job_id: u64,
+        /// List of pids to capture trace for (comma separated).
+        #[clap(long, default_value = "0")]
+        pids: String,
+    },
+    /// Capture gputrace child pids
+    GputraceChildPids {
+        /// Job id of the application to trace
+        #[clap(long, default_value_t = 0)]
+        job_id: u64,
     },
     /// Pause dcgm profiling. This enables running tools like Nsight compute and avoids conflicts.
     DcgmPause {
@@ -116,6 +141,9 @@ fn main() -> Result<()> {
             profile_start_time,
             profile_start_iteration_roundup,
             process_limit,
+            activities,
+            verbose_log_level,
+            activities_warmup_period_secs,
         } => gputrace::run_gputrace(
             dyno_client,
             job_id,
@@ -126,6 +154,23 @@ fn main() -> Result<()> {
             profile_start_time,
             profile_start_iteration_roundup,
             process_limit,
+            &activities,
+            verbose_log_level,
+            activities_warmup_period_secs,
+        ),
+        Command::GputraceState {
+            job_id,
+            pids,
+        } => gputrace::run_gputrace_state(
+            dyno_client,
+            job_id,
+            &pids,
+        ),
+        Command::GputraceChildPids {
+            job_id,
+        } => gputrace::get_gputrace_child_pids(
+            dyno_client,
+            job_id,
         ),
         Command::DcgmPause { duration_s } => dcgm::run_dcgm_pause(dyno_client, duration_s),
         Command::DcgmResume => dcgm::run_dcgm_resume(dyno_client),

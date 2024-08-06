@@ -29,6 +29,11 @@ class ServiceHandler {
       const std::set<int>& pids,
       const std::string& config,
       int limit);
+  int getKinetOnDemandProfilingStateRequest(
+      int job_id,
+      const std::set<int>& pids);
+  std::set<int32_t> getKinetOnDemandProfilingChildPidsRequest(
+      int job_id);
   // ... more to come
   bool dcgmProfPause(int duration_s);
   bool dcgmProfResume();

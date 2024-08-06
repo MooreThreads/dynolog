@@ -27,6 +27,8 @@ struct LibkinetoRequest {
   int type;
   // size of pids
   int n;
+  // current loop state of pids
+  int currentRunloopState;
   // job id of the libkineto process
   int64_t jobid;
   // pids of the process and its ancestors

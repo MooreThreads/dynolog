@@ -146,7 +146,8 @@ int32_t LibkinetoConfigManager::registerLibkinetoContext(
 std::string LibkinetoConfigManager::obtainOnDemandConfig(
     const std::string& jobId,
     const std::vector<int32_t>& pids,
-    int32_t configType) {
+    int32_t configType,
+    int currentRunloopState) {
   VLOG(2) << fmt::format(
       "obtainOnDemandConfig({}, ({}), {})",
       jobId,
@@ -157,6 +158,7 @@ std::string LibkinetoConfigManager::obtainOnDemandConfig(
   std::lock_guard<std::mutex> guard(mutex_);
 
   auto _emplace_result = jobs_[jobId].emplace(pids_set, LibkinetoProcess{});
+  jobs_child_[jobId].emplace(pids[0]); // put child (leaf) process
   const auto& it = _emplace_result.first;
   bool newProcess = _emplace_result.second;
   struct LibkinetoProcess& process = it->second;
@@ -187,6 +189,7 @@ std::string LibkinetoConfigManager::obtainOnDemandConfig(
   // Track last request time so we know which libkineto instances
   // are currently active.
   process.lastRequestTime = std::chrono::system_clock::now();
+  process.currentRunloopState = currentRunloopState;
   return ret;
 }
 
@@ -286,6 +289,66 @@ GpuProfilerResult LibkinetoConfigManager::setOnDemandConfig(
   }
 
   return res;
+}
+
+// Called by clients to control one or more libkineto instances.
+// The config is any legal libkineto on-demand config (see wiki).
+// Set config type to indicate whether this request is for
+// event profiling, activity profiling or both.
+// The limit argument is used when the job uses multiple processes or
+// the pid is a parent pid of multiple processes with libkineto.
+// For example, when specifying a pid with 8 child processes,
+// the limit argument can be used to profile 2 of those.
+int LibkinetoConfigManager::getOnDemandProfilingState(
+    const std::string& jobId,
+    const std::set<int32_t>& pids) {
+  LOG(INFO) << fmt::format(
+      "Get state of on-demand GPU profiling for job ID {}, pids [{}]",
+      jobId,
+      fmt::join(pids, ","));
+
+  size_t nPids = pids.size();
+  // For backwards compatibility with older versions of the dyno CLI,
+  // there are two conditions under which all processes should be traced:
+  // 1. target PIDs are empty
+  // 2. target PIDs contain a single PID, 0.
+  // As older versions of the CLI are phased out, 2) will no longer need to be
+  // accounted for.
+  bool traceAllPids = nPids == 0 || (nPids == 1 && *pids.begin() == 0);
+  {
+    std::lock_guard<std::mutex> guard(mutex_);
+    auto& processes = jobs_[jobId];
+    for (auto& pair : processes) {
+      for (const auto& pid : pair.first) {
+        // Trace the process if we find a match or target pids is empty.
+        if (traceAllPids || pids.find(pid) != pids.end()) {
+          auto& process = pair.second;
+          LOG(INFO) << "Get state of on-demand GPU profiling : " << process.currentRunloopState;
+          return process.currentRunloopState;
+        }
+      }
+    }
+  }
+
+  LOG(INFO) << "Get state of on-demand GPU profiling : 0 matching processes";
+
+  return -1;
+}
+
+// Called by clients to control one or more libkineto instances.
+// The config is any legal libkineto on-demand config (see wiki).
+// Set config type to indicate whether this request is for
+// event profiling, activity profiling or both.
+// The limit argument is used when the job uses multiple processes or
+// the pid is a parent pid of multiple processes with libkineto.
+// For example, when specifying a pid with 8 child processes,
+// the limit argument can be used to profile 2 of those.
+std::set<int32_t> LibkinetoConfigManager::getOnDemandProfilingChildPids(
+    const std::string& jobId) {
+  LOG(INFO) << fmt::format(
+      "Get child pids of on-demand GPU profiling for job ID {}",
+      jobId);
+  return jobs_child_[jobId];
 }
 
 int LibkinetoConfigManager::processCount(const std::string& jobId) const {

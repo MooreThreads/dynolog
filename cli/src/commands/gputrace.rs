@@ -24,6 +24,10 @@ pub fn run_gputrace(
     profile_start_time: u64,
     profile_start_iteration_roundup: u64,
     process_limit: u32,
+    activities: &str,
+    verbose_log_level: i64,
+    activities_warmup_period_secs: u64,
+
 ) -> Result<()> {
     let trigger_config = if iterations > 0 {
         format!(
@@ -37,7 +41,8 @@ pub fn run_gputrace(
         )
     };
 
-    let kineto_config = format!(r#"ACTIVITIES_LOG_FILE={}\n{}"#, log_file, trigger_config);
+    let kineto_config = format!(r#"ACTIVITIES_LOG_FILE={}\nACTIVITY_TYPES={}\nVERBOSE_LOG_LEVEL={}\nACTIVITIES_WARMUP_PERIOD_SECS={}\n{}"#,
+    log_file, activities, verbose_log_level, activities_warmup_period_secs, trigger_config);
 
     println!("Kineto config = \n{}", kineto_config);
 
@@ -76,6 +81,54 @@ pub fn run_gputrace(
             );
         }
     }
+
+    Ok(())
+}
+
+/// GputraceState command get GPU profiling state on pytorch apps
+pub fn run_gputrace_state(
+    client: TcpStream,
+    job_id: u64,
+    pids: &str,
+) -> Result<()> {
+    let request_json = format!(
+        r#"
+{{
+    "fn": "getKinetOnDemandProfilingStateRequest",
+    "job_id": {},
+    "pids": [{}]
+}}"#,
+        job_id, pids
+    );
+
+    utils::send_msg(&client, &request_json).expect("Error sending message to service");
+
+    let resp_str = utils::get_resp(&client).expect("Unable to decode output bytes");
+
+    println!("response = {}", resp_str);
+
+    Ok(())
+}
+
+/// GetGpuTraceChildPids command get GPU profiling child pids on pytorch apps
+pub fn get_gputrace_child_pids(
+    client: TcpStream,
+    job_id: u64,
+) -> Result<()> {
+    let request_json = format!(
+        r#"
+{{
+    "fn": "getKinetOnDemandProfilingChildPidsRequest",
+    "job_id": {}
+}}"#,
+        job_id
+    );
+
+    utils::send_msg(&client, &request_json).expect("Error sending message to service");
+
+    let resp_str = utils::get_resp(&client).expect("Unable to decode output bytes");
+
+    println!("response = {}", resp_str);
 
     Ok(())
 }

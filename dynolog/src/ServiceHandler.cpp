@@ -31,6 +31,24 @@ GpuProfilerResult ServiceHandler::setKinetOnDemandRequest(
       limit);
 }
 
+int ServiceHandler::getKinetOnDemandProfilingStateRequest(
+    int job_id,
+    const std::set<int>& pids) {
+  return LibkinetoConfigManager::getInstance()->getOnDemandProfilingState(
+      // Temporarily cast to string while we iteratively migrate to string job
+      // id
+      std::to_string(job_id),
+      pids);
+}
+
+std::set<int32_t> ServiceHandler::getKinetOnDemandProfilingChildPidsRequest(
+    int job_id) {
+  return LibkinetoConfigManager::getInstance()->getOnDemandProfilingChildPids(
+      // Temporarily cast to string while we iteratively migrate to string job
+      // id
+      std::to_string(job_id));
+}
+
 bool ServiceHandler::dcgmProfPause(int duration_s) {
   if (dcgm_) {
     return dcgm_->pauseProfiling(duration_s);
